@@ -7,7 +7,13 @@ import cors from 'cors'
 
 const app = express()
 
-app.use(cors())
+app.use(cors({
+  origin: [
+    'http://localhost:5173',  // Local development
+    'https://comic-price-evaluator.vercel.app'  // Production
+  ]
+}))
+
 app.use(express.json())
 
 // Test route
