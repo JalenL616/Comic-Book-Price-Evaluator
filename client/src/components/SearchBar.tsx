@@ -1,9 +1,17 @@
 import './SearchBar.css'
+import { searchComics } from '../services/api';
 
 export function SearchBar() {
-    function search(formData: FormData) {
-        const query = formData.get("query");
-        alert(`You searched for '${query}'`);
+    async function search(formData: FormData) {
+        const query = formData.get("query") as string;
+
+        try {
+          const comics = await searchComics(query);
+          console.log('Results: ', comics);
+        } catch (error)
+        {
+          console.error('Search failed: ', error)
+        }
     }
     return (
         <form action={search} className="search-form">
