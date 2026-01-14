@@ -23,16 +23,18 @@ app.get('/', (req, res) => {
 // Comic search route
 app.get('/api/comics', async (req, res) => {
   const upc = req.query.search as string;
+  // Remove whitespace
+  const cleanedUPC = upc?.replaceAll(' ', '') || '';
   
-  const validation = validateUPC(upc);
+  const validation = validateUPC(cleanedUPC);
   if (!validation.valid) {
     res.status(400).json({ error: validation.error });
     return;
   }
 
   try {
-    const comic = await searchComicByUPC(upc);
-    console.log(`Found comic with UPC: ${upc}`)
+    const comic = await searchComicByUPC(cleanedUPC);
+    console.log(`Found comic with UPC: ${cleanedUPC}`)
     res.json(comic);
   } catch (error) {
     console.log('Error searching comic:', error);
