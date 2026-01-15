@@ -1,9 +1,11 @@
 import express from 'express'
 import cors from 'cors'
+import multer from 'multer';
 import 'dotenv/config'
 import { validateUPC } from './utils/validation.js'
 import { searchComicByUPC } from './services/metronService.js'
 import { sanitizeUPC } from './utils/sanitization.js'
+import { processImage } from './services/imageService.js'
 
 const app = express()
 
@@ -15,6 +17,11 @@ app.use(cors({
 }))
 
 app.use(express.json())
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }  // 5MB limit
+  });
 
 // Test route
 app.get('/', (req, res) => {
@@ -48,5 +55,20 @@ app.get('/api/comics', async (req, res) => {
     })
   }
 })
+
+app.post('/api/upload', upload.single('image'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  try {
+    const processedBuffer = await processImage(req.file.buffer);
+
+    res.set('Content-Type', req.file.mimetype);
+    res.send(processedBuffer);
+  } catch (error) {
+    res.status(500).json({ error: 'Processing failed' });
+  }
+});
 
 export default app

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { SearchBar } from './components/SearchBar'
 import { ComicGrid } from './components/ComicGrid'
 import { searchComics } from './services/api'
+import { FileUpload } from './components/FileUpload'
 import type { Comic } from './types/comic'
 import './App.css'
 
@@ -48,6 +49,7 @@ function App() {
       <header className="app-header">
         <h1>Comic Book Price Evaluator</h1>
         <SearchBar onSearch={handleSearch} />
+        <FileUpload />
 
         {comics.length > 0 && (
           <button onClick={handleClearAll} className="clear-button">
