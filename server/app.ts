@@ -3,6 +3,7 @@ import cors from 'cors'
 import 'dotenv/config'
 import { validateUPC } from './utils/validation.js'
 import { searchComicByUPC } from './services/metronService.js'
+import { sanitizeUPC } from './utils/sanitization.js'
 
 const app = express()
 
@@ -23,8 +24,7 @@ app.get('/', (req, res) => {
 // Comic search route
 app.get('/api/comics', async (req, res) => {
   const upc = req.query.search as string;
-  // Remove whitespace
-  const cleanedUPC = upc?.replaceAll(' ', '') || '';
+  const cleanedUPC = sanitizeUPC(upc);
   
   const validation = validateUPC(cleanedUPC);
   if (!validation.valid) {
@@ -34,12 +34,17 @@ app.get('/api/comics', async (req, res) => {
 
   try {
     const comic = await searchComicByUPC(cleanedUPC);
+
+    if (!comic) {
+      return res.status(404).json({ error: 'Comic not found' });
+    }
+
     console.log(`Found comic with UPC: ${cleanedUPC}`)
     res.json(comic);
   } catch (error) {
-    console.log('Error searching comic:', error);
-    res.status(500).json({
-      error: 'Failed to search comics' 
+      console.log('Error searching comic:', error);
+      res.status(500).json({
+      error: 'Failed to search comics'
     })
   }
 })

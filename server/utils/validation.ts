@@ -1,3 +1,5 @@
+// Expects sanitized UPC
+
 export function validateUPC (upc: string | undefined): {
   valid: boolean;
   error?: string;
