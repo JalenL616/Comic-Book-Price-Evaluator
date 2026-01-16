@@ -1,0 +1,17 @@
+# client/Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+RUN npm install
+
+# Copy everything else
+COPY . .
+
+# Expose Vite port
+EXPOSE 5173
+
+# Run Vite with --host to allow outside access
+CMD ["npm", "run", "dev", "--", "--host"]

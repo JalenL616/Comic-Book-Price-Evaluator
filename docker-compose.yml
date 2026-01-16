@@ -1,0 +1,46 @@
+services:
+  # 1. The Database
+  db:
+    image: postgres:15-alpine
+    container_name: local_postgres
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. The Node/Express Backend
+  backend:
+    build: ./server
+    container_name: express_backend
+    ports:
+      - "3001:3001"
+    environment:
+      # Use "db" instead of "localhost" here!
+      - DATABASE_URL=postgresql://myuser:mypassword@db:5432/mydatabase
+      - PORT=3001
+    depends_on:
+      - db
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+
+  # 3. The React Frontend
+  frontend:
+    build: ./client
+    container_name: react_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
