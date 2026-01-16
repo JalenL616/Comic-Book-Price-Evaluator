@@ -48,7 +48,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Comic Book Price Evaluator</h1>
+        <h1>Comic Scans</h1>
         <SearchBar onSearch={handleSearch} />
         <FileUpload />
 
@@ -61,8 +61,6 @@ function App() {
 
       {loading && <div className="loading">Searching...</div>}
       {error && <div className="error">{error}</div>}
-      
-      <UserManagement />
       
       <ComicGrid comics={comics} onRemoveComic={handleRemoveComic} />  
     </div>
