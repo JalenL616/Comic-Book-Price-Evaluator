@@ -3,6 +3,7 @@ import { SearchBar } from './components/SearchBar'
 import { ComicGrid } from './components/ComicGrid'
 import { searchComics } from './services/api'
 import { FileUpload } from './components/FileUpload'
+import { UserManagement } from './components/AddUser';
 import type { Comic } from './types/comic'
 import './App.css'
 
@@ -60,7 +61,9 @@ function App() {
 
       {loading && <div className="loading">Searching...</div>}
       {error && <div className="error">{error}</div>}
-
+      
+      <UserManagement />
+      
       <ComicGrid comics={comics} onRemoveComic={handleRemoveComic} />  
     </div>
   );
