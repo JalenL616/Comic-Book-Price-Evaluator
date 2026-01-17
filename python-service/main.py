@@ -24,16 +24,30 @@ def health_check():
 async def scan_upc(image: UploadFile = File(...)):
     try:
         contents = await image.read()
-        
-        
+
         original, enhanced = preprocess_image(contents)
 
-        upc = scan_barcode(original, enhanced)
-        
-        if not upc:
+        result = scan_barcode(original, enhanced)
+
+        # If cropped region failed, try the full original image
+        if not result['main']:
+            print("Cropped region failed, trying full image...")
+            import cv2
+            import numpy as np
+            nparr = np.frombuffer(contents, np.uint8)
+            full_img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            gray = cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY)
+            result = scan_barcode(full_img, gray)
+
+        if not result['main']:
             raise HTTPException(status_code=400, detail="No barcode found")
-        
-        return {"upc": upc}
-    
+
+        return {
+            "upc": result['main'],
+            "extension": result['extension']
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

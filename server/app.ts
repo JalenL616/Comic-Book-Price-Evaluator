@@ -68,28 +68,45 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 
   try {
     // Step 1: Scan barcode using Python service
-    const upc = await scanBarcode(req.file.buffer);
-    
-    if (!upc) {
+    const result = await scanBarcode(req.file.buffer);
+
+    if (!result) {
       res.status(400).json({ error: 'Could not detect barcode' });
       return;
     }
 
-    console.log(`✅ Scanned UPC: ${upc}`);
-
-    // Step 2: Look up comic using Metron API
-    const comic = await searchComicByUPC(upc + '00111');
-    
-    if (!comic) {
-      res.status(404).json({ error: 'Comic not found', upc });
+    if (!result.extension) {
+      res.status(400).json({ error: 'Could not detect 5-digit extension', upc: result.upc });
       return;
     }
 
-    // Step 3: Return comic data
+    console.log(`Scanned UPC: ${result.upc}, Extension: ${result.extension}`);
+
+    // Step 2: Build UPC for search
+    // If last 2 digits aren't '11', search with '11' (Metron only has standard covers)
+    const extension = result.extension;
+    const lastTwoDigits = extension.slice(-2);
+    const searchExtension = lastTwoDigits === '11' ? extension : extension.slice(0, 3) + '11';
+
+    const fullUpc = result.upc + extension;
+    const searchUpc = result.upc + searchExtension;
+
+    console.log(`Full UPC: ${fullUpc}, Search UPC: ${searchUpc}`);
+
+    // Step 3: Look up comic using Metron API (with '11' suffix for variants)
+    const comic = await searchComicByUPC(searchUpc);
+
+    if (!comic) {
+      res.status(404).json({ error: 'Comic not found', upc: result.upc, extension: result.extension });
+      return;
+    }
+
+    // Step 4: Return comic data (use actual scanned UPC, not search UPC)
+    comic.upc = fullUpc;
     res.json(comic);
 
   } catch (error) {
-    console.error('❌ Upload processing error:', error);
+    console.error('Upload processing error:', error);
     res.status(500).json({ error: 'Failed to process image' });
   }
 });
