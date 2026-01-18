@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import 'dotenv/config';
@@ -6,8 +6,8 @@ import { validateUPC } from './utils/validation.js';
 import { sanitizeUPC } from './utils/sanitization.js';
 import { scanBarcode } from './services/barcodeService.js';
 import { searchComicByUPC } from './services/metronService.js';
-
-import * as db from './db.js';
+import authRoutes from './routes/auth.js';
+import collectionRoutes from './routes/collection.js';
 
 const app = express();
 
@@ -17,8 +17,8 @@ app.use(cors({
     'https://comic-price-evaluator.vercel.app',
     'https://comic-scans.vercel.app'
   ],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
@@ -112,41 +112,8 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 });
 
 
-app.get('/init', async (req: Request, res: Response) => {
-    try {
-        await db.query(`
-            CREATE TABLE IF NOT EXISTS test_users (
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL
-            );
-        `);
-        res.send("Table created!");
-    } catch (err: any) {
-        res.status(500).send(err.message);
-    }
-});
-
-app.post('/add-user', async (req: Request, res: Response) => {
-    const { name, email } = req.body;
-    try {
-        const result = await db.query(
-            'INSERT INTO test_users (name, email) VALUES ($1, $2) RETURNING *',
-            [name, email]
-        );
-        res.json(result.rows[0]);
-    } catch (err: any) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/users', async (req, res) => {
-    try {
-        const result = await db.query('SELECT * FROM test_users');
-        res.json(result.rows);
-    } catch (err: any) {
-        res.status(500).send(err.message);
-    }
-});
+// Auth and collection routes
+app.use('/api/auth', authRoutes);
+app.use('/api/collection', collectionRoutes);
 
 export default app;
