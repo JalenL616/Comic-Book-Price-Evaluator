@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SearchBar } from './components/SearchBar'
 import { ComicGrid } from './components/ComicGrid'
 import { searchComics } from './services/api'
@@ -7,9 +7,25 @@ import type { Comic } from './types/comic'
 import './App.css'
 
 function App() {
-  const [comics, setComics] = useState<Comic[]>([]);
+  // Initialize comics from localStorage
+  const [comics, setComics] = useState<Comic[]>(() => {
+    const saved = localStorage.getItem('comics');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Save comics to localStorage whenever collection changes
+  useEffect(() => {
+    localStorage.setItem('comics', JSON.stringify(comics));
+  }, [comics]);
 
   async function handleSearch(upc: string) {
     setLoading(true);
