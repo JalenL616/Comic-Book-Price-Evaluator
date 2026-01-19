@@ -53,6 +53,53 @@
   border-color: #007bff;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.import-export-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.export-button {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
+}
+
+.export-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.export-button:disabled {
+  background-color: #94d3a2;
+  cursor: not-allowed;
+}
+
+.import-button {
+  padding: 10px 20px;
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
+  display: inline-block;
+}
+
+.import-button:hover {
+  background-color: #138496;
+}
+
 .clear-button {
   padding: 10px 20px;
   background-color: #dc3545;

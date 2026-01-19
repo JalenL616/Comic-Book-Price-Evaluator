@@ -4,7 +4,7 @@ import type { Comic } from '../types/comic';
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface FileUploadProps {
-  onComicFound: (comic: Comic) => void;
+  onComicFound: (comic: Comic) => boolean; // Returns true if added, false if duplicate
 }
 
 export function FileUpload({ onComicFound }: FileUploadProps) {
@@ -63,6 +63,7 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
 
     const errors: string[] = [];
     let successCount = 0;
+    let duplicateCount = 0;
 
     for (let i = 0; i < files.length; i++) {
       if (cancelledRef.current) break;
@@ -72,8 +73,12 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
       try {
         const comic = await uploadFile(files[i]);
         if (comic) {
-          onComicFound(comic);
-          successCount++;
+          const wasAdded = onComicFound(comic);
+          if (wasAdded) {
+            successCount++;
+          } else {
+            duplicateCount++;
+          }
         }
       } catch (err) {
         if (cancelledRef.current) break;
@@ -87,11 +92,14 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
 
     if (cancelledRef.current) {
       setError(successCount > 0 ? `Cancelled (${successCount} added)` : 'Cancelled');
-    } else if (errors.length > 0) {
-      if (successCount > 0) {
-        setError(`${successCount} added, ${errors.length} failed`);
-      } else {
-        setError(errors.length === 1 ? errors[0] : `${errors.length} uploads failed`);
+    } else {
+      const parts: string[] = [];
+      if (successCount > 0) parts.push(`${successCount} added`);
+      if (duplicateCount > 0) parts.push(`${duplicateCount} duplicate${duplicateCount > 1 ? 's' : ''}`);
+      if (errors.length > 0) parts.push(`${errors.length} failed`);
+
+      if (parts.length > 0) {
+        setError(parts.join(', '));
       }
     }
   }

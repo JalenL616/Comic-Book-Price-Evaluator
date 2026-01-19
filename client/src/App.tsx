@@ -34,7 +34,10 @@ function HomePage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sortOption, setSortOption] = useState<SortOption>('custom');
+  const [sortOption, setSortOption] = useState<SortOption>(() => {
+    const saved = localStorage.getItem('sortOption');
+    return (saved as SortOption) || 'custom';
+  });
 
   // Load comics from API if logged in, clear if logged out
   useEffect(() => {
@@ -54,6 +57,11 @@ function HomePage() {
     localStorage.setItem('comics', JSON.stringify(comics));
   }, [comics]);
 
+  // Save sort option to localStorage
+  useEffect(() => {
+    localStorage.setItem('sortOption', sortOption);
+  }, [sortOption]);
+
   // Sort comics based on current option
   const sortedComics = useMemo(() => {
     // Always put starred comics first
@@ -64,12 +72,18 @@ function HomePage() {
       if (sortOption === 'a-z') {
         const seriesCompare = a.seriesName.localeCompare(b.seriesName);
         if (seriesCompare !== 0) return seriesCompare;
-        // Same series - sort by issue number ascending
+        // Same series name - sort by year ascending
+        const yearCompare = (a.seriesYear || '').localeCompare(b.seriesYear || '');
+        if (yearCompare !== 0) return yearCompare;
+        // Same series and year - sort by issue number ascending
         return parseFloat(a.issueNumber) - parseFloat(b.issueNumber);
       } else if (sortOption === 'z-a') {
         const seriesCompare = b.seriesName.localeCompare(a.seriesName);
         if (seriesCompare !== 0) return seriesCompare;
-        // Same series - sort by issue number ascending
+        // Same series name - sort by year descending
+        const yearCompare = (b.seriesYear || '').localeCompare(a.seriesYear || '');
+        if (yearCompare !== 0) return yearCompare;
+        // Same series and year - sort by issue number ascending
         return parseFloat(a.issueNumber) - parseFloat(b.issueNumber);
       }
       // Custom order - use sortOrder
@@ -180,9 +194,135 @@ function HomePage() {
     }
   }
 
-  function handleClearAll() {
+  async function handleClearAll() {
+    if (!confirm('Are you sure you want to clear your entire collection? This cannot be undone.')) {
+      return;
+    }
+
     setComics([]);
-    // Note: This doesn't delete from DB - user can reload to get them back
+    localStorage.removeItem('comics');
+
+    if (user && token) {
+      try {
+        await fetch(`${API_URL}/api/collection`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (err) {
+        console.error('Failed to clear collection from database:', err);
+      }
+    }
+  }
+
+  async function handleExport() {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_URL}/api/collection/export`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'comic-collection.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error('Failed to export:', err);
+    }
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'));
+
+      if (lines.length < 2) {
+        setError('CSV file is empty or invalid');
+        return;
+      }
+
+      // Parse CSV - skip header row (first non-comment line)
+      const importedComics: Comic[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        if (values.length >= 6 && values[0]) {
+          importedComics.push({
+            upc: values[0],
+            name: values[1] || '',
+            seriesName: values[2] || '',
+            seriesVolume: values[3] || '',
+            seriesYear: values[4] || '',
+            issueNumber: values[5] || '',
+            printing: values[6] || '',
+            variantNumber: values[7] || '',
+            starred: values[8]?.toLowerCase() === 'yes',
+            coverImage: values[9] || ''
+          });
+        }
+      }
+
+      if (importedComics.length === 0) {
+        setError('No valid comics found in CSV');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/collection/import`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ comics: importedComics })
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        setError(null);
+        loadCollection();
+        alert(`Imported ${result.imported} comics (${result.skipped} duplicates skipped)`);
+      } else {
+        setError(result.error || 'Import failed');
+      }
+    } catch (err) {
+      console.error('Failed to import:', err);
+      setError('Failed to parse import file');
+    }
+
+    e.target.value = '';
+  }
+
+  // Helper to parse CSV line handling quoted fields
+  function parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+    return result;
   }
 
   function handleRemoveComic(upc: string) {
@@ -214,17 +354,16 @@ function HomePage() {
     }
   }
 
-  function handleFileUpload(comic: Comic) {
-    setComics(prev => {
-      const isDuplicate = prev.some(c => c.upc === comic.upc);
-      if (isDuplicate) {
-        return prev; // Don't add duplicate
-      }
-      const newComic = { ...comic, sortOrder: prev.length };
-      if (user) saveToCollection(newComic);
-      return [...prev, newComic];
-    });
+  function handleFileUpload(comic: Comic): boolean {
+    const isDuplicate = comics.some(c => c.upc === comic.upc);
+    if (isDuplicate) {
+      return false;
+    }
+    const newComic = { ...comic, sortOrder: comics.length };
+    setComics(prev => [...prev, newComic]);
     setError(null);
+    if (user) saveToCollection(newComic);
+    return true;
   }
 
   // Returns true if added, false if duplicate (for QR scanning)
@@ -249,6 +388,23 @@ function HomePage() {
         <FileUpload onComicFound={handleFileUpload} />
         <QRConnect onComicReceived={handleQRScan} />
 
+        {user && (
+          <div className="import-export-buttons">
+            <button onClick={handleExport} className="export-button" disabled={comics.length === 0}>
+              Export
+            </button>
+            <label className="import-button">
+              Import
+              <input
+                type="file"
+                accept=".csv,.txt"
+                onChange={handleImport}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
+        )}
+
         {comics.length > 0 && (
           <div className="controls-row">
             <div className="sort-controls">
@@ -264,9 +420,11 @@ function HomePage() {
                 <option value="z-a">Series Z-A</option>
               </select>
             </div>
-            <button onClick={handleClearAll} className="clear-button">
-              Clear All ({comics.length})
-            </button>
+            <div className="action-buttons">
+              <button onClick={handleClearAll} className="clear-button">
+                Clear All ({comics.length})
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -99,6 +99,99 @@ router.put('/reorder', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// GET /api/collection/export - Export collection as CSV file
+router.get('/export', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await db.query(
+      `SELECT upc, name, issue_number, series_name, series_volume, series_year,
+              cover_image, printing, variant_number, starred, sort_order, added_at
+       FROM user_comics WHERE user_id = $1
+       ORDER BY series_name ASC, issue_number ASC`,
+      [req.user!.id]
+    );
+
+    const comics = result.rows;
+
+    // Helper to escape CSV fields
+    const escapeCSV = (val: string | null | undefined) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    // CSV Header with instruction comment
+    const headers = ['UPC', 'Name', 'Series', 'Volume', 'Year', 'Issue', 'Printing', 'Variant', 'Starred', 'Cover Image', 'Added'];
+    let csv = '# This file can be imported into Excel or Google Sheets. To import back into the app, keep the header row and remove this comment line.\n';
+    csv += headers.join(',') + '\n';
+
+    // CSV Rows
+    comics.forEach(comic => {
+      const row = [
+        escapeCSV(comic.upc),
+        escapeCSV(comic.name),
+        escapeCSV(comic.series_name),
+        escapeCSV(comic.series_volume),
+        escapeCSV(comic.series_year),
+        escapeCSV(comic.issue_number),
+        escapeCSV(comic.printing),
+        escapeCSV(comic.variant_number),
+        comic.starred ? 'Yes' : 'No',
+        escapeCSV(comic.cover_image),
+        comic.added_at ? new Date(comic.added_at).toISOString().split('T')[0] : ''
+      ];
+      csv += row.join(',') + '\n';
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="comic-collection.csv"');
+    res.send(csv);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to export collection' });
+  }
+});
+
+// POST /api/collection/import - Import collection from exported file
+router.post('/import', async (req: AuthRequest, res: Response) => {
+  const { comics } = req.body;
+
+  if (!Array.isArray(comics)) {
+    res.status(400).json({ error: 'Invalid import data' });
+    return;
+  }
+
+  try {
+    let imported = 0;
+    let skipped = 0;
+
+    for (const comic of comics) {
+      if (!comic.upc) continue;
+
+      const result = await db.query(
+        `INSERT INTO user_comics (user_id, upc, name, issue_number, series_name, series_volume, series_year, cover_image, printing, variant_number, starred, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (user_id, upc) DO NOTHING
+         RETURNING upc`,
+        [req.user!.id, comic.upc, comic.name, comic.issueNumber, comic.seriesName,
+         comic.seriesVolume, comic.seriesYear, comic.coverImage, comic.printing,
+         comic.variantNumber, comic.starred || false, comic.sortOrder || 0]
+      );
+
+      if (result.rowCount && result.rowCount > 0) {
+        imported++;
+      } else {
+        skipped++;
+      }
+    }
+
+    res.json({ success: true, imported, skipped });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to import collection' });
+  }
+});
+
 // DELETE /api/collection/:upc - Remove comic from collection
 router.delete('/:upc', async (req: AuthRequest, res: Response) => {
   try {
@@ -109,6 +202,19 @@ router.delete('/:upc', async (req: AuthRequest, res: Response) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to remove comic' });
+  }
+});
+
+// DELETE /api/collection - Clear entire collection
+router.delete('/', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await db.query(
+      'DELETE FROM user_comics WHERE user_id = $1',
+      [req.user!.id]
+    );
+    res.json({ success: true, deleted: result.rowCount });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear collection' });
   }
 });
 
