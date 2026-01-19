@@ -12,24 +12,33 @@ def preprocess_image(image_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if img is None: raise ValueError("Could not decode image")
 
-    if ENABLE_DEBUG: cv2.imwrite(str(DEBUG_DIR / "01_original.png"), img)
+    if ENABLE_DEBUG:
+        DEBUG_DIR.mkdir(exist_ok=True)
+        cv2.imwrite(str(DEBUG_DIR / "01_original.png"), img)
 
     h, w = img.shape[:2]
-    
+
     # 1. Attempt focused detection
     cropped = detect_barcode_region(img)
+    used_fallback = False
 
-    # 2. Logic for Fallback to Bottom-Left (Common for UPCs on packaging)
+    # 2. If detection failed or area is too large, use full image
     if cropped is None or (cropped.shape[0] * cropped.shape[1]) > (h * w * 0.6):
-        # If detection failed or area is too huge, use bottom-left quadrant
-        cropped = img[h//2:, :w//2]
+        cropped = img
+        used_fallback = True
+
+    if ENABLE_DEBUG:
+        cv2.imwrite(str(DEBUG_DIR / f"02_cropped_{'fallback' if used_fallback else 'detected'}.png"), cropped)
 
     # 3. Grayscale and Enhancement
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
-    
+
     # CLAHE enhancement helps with glares
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
+
+    if ENABLE_DEBUG:
+        cv2.imwrite(str(DEBUG_DIR / "03_enhanced.png"), enhanced)
 
     return cropped, enhanced
 
