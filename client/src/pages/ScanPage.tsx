@@ -238,13 +238,13 @@ export function ScanPage() {
 
       <div className="scan-content-live">
         {/* Live Camera View */}
-        <div className="live-camera-fullscreen">
+        <div className="live-camera-container">
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            className="live-camera-video-full"
+            className="live-camera-video"
           />
           <canvas ref={canvasRef} style={{ display: 'none' }} />
 

@@ -1029,20 +1029,24 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  padding: var(--space-md);
+  gap: var(--space-md);
+}
+
+/* Camera Container - maintains aspect ratio */
+.live-camera-container {
   position: relative;
-}
-
-/* Fullscreen Live Camera */
-.live-camera-fullscreen {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
   background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin: auto;
 }
 
-.live-camera-video-full {
+.live-camera-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1079,69 +1083,57 @@
   letter-spacing: 0.05em;
 }
 
+.start-camera-button:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
 /* Capture Flash */
 .capture-flash {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: white;
   opacity: 0;
   pointer-events: none;
+  border-radius: var(--radius-lg);
 }
 
 .capture-flash.active {
-  animation: flashPulse 0.2s ease-out;
+  animation: flashPulse 0.15s ease-out;
 }
 
 @keyframes flashPulse {
-  0% { opacity: 0.7; }
+  0% { opacity: 0.6; }
   100% { opacity: 0; }
 }
 
 /* Bottom Controls */
 .scan-controls {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   padding: var(--space-lg);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
   z-index: 10;
 }
 
-/* Capture Button - Camera Style */
+/* Capture Button - iPhone Camera Style */
 .capture-button {
-  width: 80px;
-  height: 80px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   background: transparent;
-  border: 5px solid white;
+  border: 4px solid white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
+  transition: opacity 0.15s ease;
   flex-shrink: 0;
   position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.capture-button:hover:not(:disabled) {
-  transform: scale(1.05);
-  border-color: rgba(255, 255, 255, 0.9);
-}
-
-.capture-button:active:not(:disabled) {
-  transform: scale(0.92);
+  padding: 3px;
 }
 
 .capture-button:active:not(:disabled) .capture-button-inner {
-  transform: scale(0.85);
+  opacity: 0.7;
 }
 
 .capture-button:disabled {
@@ -1149,40 +1141,30 @@
   cursor: not-allowed;
 }
 
-.capture-button:disabled:hover {
-  transform: none;
-}
-
 .capture-button-inner {
-  width: 62px;
-  height: 62px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  background: white;
-  transition: all 0.1s ease;
-}
-
-.capture-button.processing .capture-button-inner {
   background: white;
 }
 
 /* Pending scans badge */
 .capture-pending-badge {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  min-width: 24px;
-  height: 24px;
+  top: -6px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
   background: var(--color-accent-gold);
   color: var(--color-bg-primary);
-  border-radius: 12px;
-  font-size: 0.75rem;
+  border-radius: 11px;
+  font-size: 0.7rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
+  padding: 0 5px;
   animation: badgePop 0.2s ease-out;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes badgePop {
@@ -1270,18 +1252,14 @@
 
 /* Error Toast */
 .scan-error-toast {
-  position: absolute;
-  bottom: 130px;
-  left: 50%;
-  transform: translateX(-50%);
+  text-align: center;
   background: rgba(231, 76, 60, 0.95);
   color: white;
   padding: var(--space-sm) var(--space-lg);
   border-radius: var(--radius-md);
   font-size: 0.85rem;
-  z-index: 20;
   animation: fadeIn 0.2s ease-out;
-  box-shadow: var(--shadow-md);
+  margin: 0 var(--space-md);
 }
 
 @keyframes fadeIn {
