@@ -1114,28 +1114,34 @@
   z-index: 10;
 }
 
-/* Capture Button */
+/* Capture Button - Camera Style */
 .capture-button {
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 3px solid white;
+  background: transparent;
+  border: 5px solid white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--transition-fast);
   flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .capture-button:hover:not(:disabled) {
   transform: scale(1.05);
-  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.9);
 }
 
 .capture-button:active:not(:disabled) {
-  transform: scale(0.95);
+  transform: scale(0.92);
+}
+
+.capture-button:active:not(:disabled) .capture-button-inner {
+  transform: scale(0.85);
 }
 
 .capture-button:disabled {
@@ -1148,21 +1154,41 @@
 }
 
 .capture-button-inner {
-  width: 56px;
-  height: 56px;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
   background: white;
-  transition: all var(--transition-fast);
+  transition: all 0.1s ease;
 }
 
-.capture-button.scanning .capture-button-inner {
-  background: var(--color-success);
-  animation: buttonPulse 0.8s ease-in-out infinite;
+.capture-button.processing .capture-button-inner {
+  background: white;
 }
 
-@keyframes buttonPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(0.85); }
+/* Pending scans badge */
+.capture-pending-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 24px;
+  height: 24px;
+  background: var(--color-accent-gold);
+  color: var(--color-bg-primary);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  animation: badgePop 0.2s ease-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 /* Mini Disconnect Button */

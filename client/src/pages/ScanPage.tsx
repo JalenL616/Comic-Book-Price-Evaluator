@@ -16,7 +16,7 @@ export function ScanPage() {
   const streamRef = useRef<MediaStream | null>(null);
 
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
-  const [isScanning, setIsScanning] = useState(false);
+  const [pendingScans, setPendingScans] = useState(0);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +118,6 @@ export function ScanPage() {
 
   const captureAndScan = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || !socketRef.current || !sessionId) return;
-    if (isScanning) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -133,7 +132,7 @@ export function ScanPage() {
 
     // Show capture flash
     setIsCapturing(true);
-    setTimeout(() => setIsCapturing(false), 200);
+    setTimeout(() => setIsCapturing(false), 150);
 
     // Set canvas size to match video
     canvas.width = video.videoWidth;
@@ -146,7 +145,8 @@ export function ScanPage() {
     canvas.toBlob(async (blob) => {
       if (!blob || !socketRef.current) return;
 
-      setIsScanning(true);
+      // Increment pending scans (allows parallel processing)
+      setPendingScans(prev => prev + 1);
       setError(null);
 
       try {
@@ -154,7 +154,7 @@ export function ScanPage() {
         formData.append('image', blob, 'capture.jpg');
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const response = await fetch(`${API_URL}/api/upload`, {
           method: 'POST',
@@ -171,7 +171,7 @@ export function ScanPage() {
         }
 
         // Send comic to desktop (desktop will notify if duplicate)
-        socketRef.current.emit('barcode-scanned', { sessionId, comic: data });
+        socketRef.current?.emit('barcode-scanned', { sessionId, comic: data });
         setScanCount(prev => prev + 1);
         setLastComic(data);
         setLastScanResult('added');
@@ -180,10 +180,10 @@ export function ScanPage() {
         console.error('Scan error:', err);
         setError(err instanceof Error ? err.message : 'Scan failed');
       } finally {
-        setIsScanning(false);
+        setPendingScans(prev => Math.max(0, prev - 1));
       }
     }, 'image/jpeg', 0.95);
-  }, [sessionId, isScanning]);
+  }, [sessionId]);
 
   function handleDisconnect() {
     stopCamera();
@@ -286,10 +286,13 @@ export function ScanPage() {
           {/* Capture Button */}
           <button
             onClick={captureAndScan}
-            disabled={isScanning || !isCameraActive}
-            className={`capture-button ${isScanning ? 'scanning' : ''}`}
+            disabled={!isCameraActive}
+            className={`capture-button ${pendingScans > 0 ? 'processing' : ''}`}
           >
             <div className="capture-button-inner" />
+            {pendingScans > 0 && (
+              <span className="capture-pending-badge">{pendingScans}</span>
+            )}
           </button>
 
           {/* Disconnect */}
