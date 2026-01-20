@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useToast } from '../context/ToastContext';
 import type { Comic } from '../types/comic';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -9,12 +10,12 @@ interface FileUploadProps {
 
 export function FileUpload({ onComicFound }: FileUploadProps) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const cancelledRef = useRef(false);
+  const { showToast } = useToast();
 
   async function uploadFile(file: File): Promise<Comic | null> {
     if (cancelledRef.current) return null;
@@ -57,13 +58,10 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
 
   async function uploadFiles(files: File[]) {
     setLoading(true);
-    setError(null);
     setProgress({ current: 0, total: files.length });
     cancelledRef.current = false;
 
-    const errors: string[] = [];
-    let successCount = 0;
-    let duplicateCount = 0;
+    let failedCount = 0;
 
     for (let i = 0; i < files.length; i++) {
       if (cancelledRef.current) break;
@@ -73,17 +71,13 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
       try {
         const comic = await uploadFile(files[i]);
         if (comic) {
-          const wasAdded = onComicFound(comic);
-          if (wasAdded) {
-            successCount++;
-          } else {
-            duplicateCount++;
-          }
+          onComicFound(comic);
         }
       } catch (err) {
         if (cancelledRef.current) break;
+        failedCount++;
         const errorMsg = err instanceof Error ? err.message : 'Upload failed';
-        errors.push(`${files[i].name}: ${errorMsg}`);
+        showToast(`Scan failed: ${errorMsg}`, 'error');
       }
     }
 
@@ -91,16 +85,7 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
     setProgress(null);
 
     if (cancelledRef.current) {
-      setError(successCount > 0 ? `Cancelled (${successCount} added)` : 'Cancelled');
-    } else {
-      const parts: string[] = [];
-      if (successCount > 0) parts.push(`${successCount} added`);
-      if (duplicateCount > 0) parts.push(`${duplicateCount} duplicate${duplicateCount > 1 ? 's' : ''}`);
-      if (errors.length > 0) parts.push(`${errors.length} failed`);
-
-      if (parts.length > 0) {
-        setError(parts.join(', '));
-      }
+      showToast('Upload cancelled', 'info');
     }
   }
 
@@ -148,7 +133,7 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
     if (files.length > 0) {
       uploadFiles(files);
     } else {
-      setError('Please drop image files');
+      showToast('Please drop image files', 'error');
     }
   }
 
@@ -190,7 +175,6 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
           Cancel
         </button>
       )}
-      {error && <span className="upload-error">{error}</span>}
     </div>
   );
 }

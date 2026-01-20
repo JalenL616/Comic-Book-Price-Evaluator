@@ -78,19 +78,6 @@
   50% { opacity: 1; }
 }
 
-/* Empty state */
-.comic-grid:empty::after {
-  content: 'Your collection is empty. Start by searching for comics or scanning covers.';
-  grid-column: 1 / -1;
-  text-align: center;
-  color: var(--color-text-muted);
-  font-size: 1rem;
-  padding: var(--space-3xl);
-  background: var(--gradient-card);
-  border-radius: var(--radius-xl);
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE ADJUSTMENTS
    ═══════════════════════════════════════════════════════════════════════════ */

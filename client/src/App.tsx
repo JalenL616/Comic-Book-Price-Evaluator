@@ -10,6 +10,9 @@ import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { ScanPage } from './pages/ScanPage'
 import { useAuth } from './context/AuthContext'
+import { useToast } from './context/ToastContext'
+import { ToastContainer, ConfirmModal } from './components/Toast'
+import { EmptyState } from './components/EmptyState'
 import type { Comic } from './types/comic'
 import './App.css'
 
@@ -19,6 +22,7 @@ type SortOption = 'custom' | 'a-z' | 'z-a';
 
 function HomePage() {
   const { user, token } = useAuth();
+  const { showToast } = useToast();
 
   // Initialize comics from localStorage (works as cache for both logged-in and anonymous)
   const [comics, setComics] = useState<Comic[]>(() => {
@@ -38,6 +42,7 @@ function HomePage() {
     const saved = localStorage.getItem('sortOption');
     return (saved as SortOption) || 'custom';
   });
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Load comics from API if logged in, clear if logged out
   useEffect(() => {
@@ -73,7 +78,7 @@ function HomePage() {
         const seriesCompare = a.seriesName.localeCompare(b.seriesName);
         if (seriesCompare !== 0) return seriesCompare;
         // Same series name - sort by year ascending
-        const yearCompare = (a.seriesYear || '').localeCompare(b.seriesYear || '');
+        const yearCompare = String(a.seriesYear || '').localeCompare(String(b.seriesYear || ''));
         if (yearCompare !== 0) return yearCompare;
         // Same series and year - sort by issue number ascending
         return parseFloat(a.issueNumber) - parseFloat(b.issueNumber);
@@ -81,7 +86,7 @@ function HomePage() {
         const seriesCompare = b.seriesName.localeCompare(a.seriesName);
         if (seriesCompare !== 0) return seriesCompare;
         // Same series name - sort by year descending
-        const yearCompare = (b.seriesYear || '').localeCompare(a.seriesYear || '');
+        const yearCompare = String(b.seriesYear || '').localeCompare(String(a.seriesYear || ''));
         if (yearCompare !== 0) return yearCompare;
         // Same series and year - sort by issue number ascending
         return parseFloat(a.issueNumber) - parseFloat(b.issueNumber);
@@ -178,11 +183,12 @@ function HomePage() {
         const isDuplicate = comics.some(c => c.upc === result.upc);
 
         if (isDuplicate) {
-          setError('Comic already in results');
+          showToast('Comic already in your collection', 'info');
         } else {
           const newComic = { ...result, sortOrder: comics.length };
           setComics(prev => [...prev, newComic]);
           if (user) saveToCollection(newComic);
+          showToast(`Added "${result.seriesName} #${result.issueNumber}"`, 'success');
         }
       } else {
         setError('Comic not found');
@@ -195,12 +201,10 @@ function HomePage() {
   }
 
   async function handleClearAll() {
-    if (!confirm('Are you sure you want to clear your entire collection? This cannot be undone.')) {
-      return;
-    }
-
+    const count = comics.length;
     setComics([]);
     localStorage.removeItem('comics');
+    setShowClearConfirm(false);
 
     if (user && token) {
       try {
@@ -212,6 +216,8 @@ function HomePage() {
         console.error('Failed to clear collection from database:', err);
       }
     }
+
+    showToast(`Cleared ${count} comic${count !== 1 ? 's' : ''} from collection`, 'success');
   }
 
   async function handleExport() {
@@ -326,8 +332,12 @@ function HomePage() {
   }
 
   function handleRemoveComic(upc: string) {
-    setComics(prev => prev.filter(comic => comic.upc !== upc));
+    const comic = comics.find(c => c.upc === upc);
+    setComics(prev => prev.filter(c => c.upc !== upc));
     if (user) removeFromCollection(upc);
+    if (comic) {
+      showToast(`Removed "${comic.seriesName} #${comic.issueNumber}"`, 'success');
+    }
   }
 
   function handleToggleStar(upc: string) {
@@ -357,12 +367,14 @@ function HomePage() {
   function handleFileUpload(comic: Comic): boolean {
     const isDuplicate = comics.some(c => c.upc === comic.upc);
     if (isDuplicate) {
+      showToast('Comic already in your collection', 'info');
       return false;
     }
     const newComic = { ...comic, sortOrder: comics.length };
     setComics(prev => [...prev, newComic]);
     setError(null);
     if (user) saveToCollection(newComic);
+    showToast(`Added "${comic.seriesName} #${comic.issueNumber}"`, 'success');
     return true;
   }
 
@@ -371,12 +383,14 @@ function HomePage() {
     const isDuplicate = comics.some(c => c.upc === comic.upc);
 
     if (isDuplicate) {
+      showToast('Comic already in your collection', 'info');
       return false;
     } else {
       const newComic = { ...comic, sortOrder: comics.length };
       setComics(prev => [...prev, newComic]);
       setError(null);
       if (user) saveToCollection(newComic);
+      showToast(`Added "${comic.seriesName} #${comic.issueNumber}"`, 'success');
       return true;
     }
   }
@@ -426,7 +440,7 @@ function HomePage() {
                   </label>
                 </>
               )}
-              <button onClick={handleClearAll} className="clear-button">
+              <button onClick={() => setShowClearConfirm(true)} className="clear-button">
                 Clear All ({comics.length})
               </button>
             </div>
@@ -437,12 +451,24 @@ function HomePage() {
       {loading && <div className="loading">Searching...</div>}
       {error && <div className="error">{error}</div>}
 
-      <ComicGrid
-        comics={sortedComics}
-        onRemoveComic={handleRemoveComic}
-        onToggleStar={handleToggleStar}
-        onReorder={handleReorder}
-      />
+      {comics.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <ComicGrid
+          comics={sortedComics}
+          onRemoveComic={handleRemoveComic}
+          onToggleStar={handleToggleStar}
+          onReorder={handleReorder}
+        />
+      )}
+
+      {showClearConfirm && (
+        <ConfirmModal
+          message="Are you sure you want to clear your entire collection? This cannot be undone."
+          onConfirm={handleClearAll}
+          onCancel={() => setShowClearConfirm(false)}
+        />
+      )}
     </>
   );
 }
@@ -465,6 +491,7 @@ function App() {
           <Route path="/scan/:sessionId" element={<ScanPage />} />
         </Routes>
       </main>
+      <ToastContainer />
     </div>
   );
 }

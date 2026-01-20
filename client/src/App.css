@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   COMIC VAULT - Premium Collector's Archive
+   COMIC SCANS - Premium Collector's Archive
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .app {
@@ -47,6 +47,12 @@
   gap: var(--space-sm);
 }
 
+.site-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
 .site-title h1 {
   font-family: var(--font-display);
   font-size: 1.75rem;
@@ -56,14 +62,6 @@
   background-clip: text;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-}
-
-.site-title::before {
-  content: '';
-  width: 8px;
-  height: 24px;
-  background: var(--gradient-gold);
-  border-radius: 2px;
 }
 
 .header-nav {
@@ -1274,6 +1272,11 @@
     padding: var(--space-md);
     flex-wrap: wrap;
     gap: var(--space-sm);
+  }
+
+  .site-logo {
+    width: 32px;
+    height: 32px;
   }
 
   .site-title h1 {

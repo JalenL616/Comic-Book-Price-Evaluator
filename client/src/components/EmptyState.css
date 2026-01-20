@@ -1,0 +1,107 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   EMPTY STATE - Onboarding UI
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.empty-state {
+  max-width: 900px;
+  margin: var(--space-2xl) auto;
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.empty-state-header {
+  margin-bottom: var(--space-2xl);
+}
+
+.empty-state-header h2 {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--space-md);
+}
+
+.empty-state-header p {
+  color: var(--color-text-secondary);
+  font-size: 1.1rem;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Onboarding Cards Grid */
+.onboarding-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-lg);
+}
+
+.onboarding-card {
+  background: var(--gradient-card);
+  border: 1px solid rgba(212, 168, 83, 0.15);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  text-align: center;
+  transition: all var(--transition-base);
+}
+
+.onboarding-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(212, 168, 83, 0.35);
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.onboarding-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--space-md);
+  background: linear-gradient(135deg, rgba(212, 168, 83, 0.15), rgba(212, 168, 83, 0.05));
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--color-accent-gold);
+}
+
+.onboarding-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.onboarding-card p {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .empty-state {
+    padding: var(--space-lg);
+    margin: var(--space-lg) auto;
+  }
+
+  .empty-state-header h2 {
+    font-size: 2rem;
+  }
+
+  .onboarding-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-card {
+    padding: var(--space-lg);
+  }
+}
