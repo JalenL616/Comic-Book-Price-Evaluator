@@ -37,19 +37,26 @@
   gap: var(--space-lg);
 }
 
-.onboarding-card {
+button.onboarding-card {
   background: var(--gradient-card);
   border: 1px solid rgba(212, 168, 83, 0.15);
   border-radius: var(--radius-xl);
   padding: var(--space-xl);
   text-align: center;
   transition: all var(--transition-base);
+  cursor: pointer;
+  width: 100%;
+  font-family: inherit;
 }
 
-.onboarding-card:hover {
-  transform: translateY(-4px);
+button.onboarding-card:hover {
   border-color: rgba(212, 168, 83, 0.35);
   box-shadow: var(--shadow-glow-gold);
+}
+
+button.onboarding-card:focus-visible {
+  outline: 2px solid var(--color-accent-gold);
+  outline-offset: 2px;
 }
 
 .onboarding-icon {

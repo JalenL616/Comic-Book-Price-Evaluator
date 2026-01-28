@@ -101,7 +101,7 @@
 }
 
 .header-button:hover {
-  transform: translateY(-2px);
+  color: var(--color-bg-primary);
   box-shadow: 0 6px 20px rgba(212, 168, 83, 0.35);
 }
 
@@ -233,6 +233,12 @@
   box-shadow: 0 0 0 3px rgba(212, 168, 83, 0.15);
 }
 
+.sort-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: transparent;
+}
+
 .action-buttons {
   display: flex;
   gap: var(--space-sm);
@@ -258,7 +264,6 @@
   background: rgba(212, 168, 83, 0.15);
   border-color: var(--color-accent-gold);
   color: var(--color-accent-gold);
-  transform: translateY(-2px);
 }
 
 .export-button:disabled {
@@ -291,7 +296,6 @@
   background: rgba(212, 168, 83, 0.15);
   border-color: var(--color-accent-gold);
   color: var(--color-accent-gold);
-  transform: translateY(-2px);
 }
 
 .clear-button {
@@ -306,11 +310,18 @@
   transition: all var(--transition-fast);
 }
 
-.clear-button:hover {
+.clear-button:hover:not(:disabled) {
   background: var(--color-danger);
   color: white;
   border-color: var(--color-danger);
   box-shadow: 0 4px 15px rgba(201, 85, 61, 0.3);
+}
+
+.clear-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: transparent;
+  color: var(--color-text-muted);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -524,7 +535,6 @@
 }
 
 .auth-button:hover {
-  transform: translateY(-2px);
   box-shadow: 0 6px 25px rgba(212, 168, 83, 0.4);
 }
 
@@ -593,7 +603,6 @@
 }
 
 .qr-connect-button:hover {
-  transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(212, 168, 83, 0.35);
 }
 

@@ -139,7 +139,6 @@
 .confirm-btn-cancel:hover {
   background: var(--color-bg-secondary);
   border-color: var(--color-text-secondary);
-  transform: translateY(-1px);
 }
 
 .confirm-btn-confirm {
@@ -151,7 +150,6 @@
 .confirm-btn-confirm:hover {
   background: var(--color-danger-hover);
   border-color: var(--color-danger-hover);
-  transform: translateY(-1px);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { SearchBar } from './components/SearchBar'
 import { ComicGrid } from './components/ComicGrid'
 import { Header } from './components/Header'
 import { searchComics } from './services/api'
 import { FileUpload } from './components/FileUpload'
+import type { FileUploadHandle } from './components/FileUpload'
 import { QRConnect } from './components/QRConnect'
+import type { QRConnectHandle } from './components/QRConnect'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { ScanPage } from './pages/ScanPage'
@@ -23,6 +25,8 @@ type SortOption = 'custom' | 'a-z' | 'z-a';
 function HomePage() {
   const { user, token } = useAuth();
   const { showToast } = useToast();
+  const fileUploadRef = useRef<FileUploadHandle>(null);
+  const qrConnectRef = useRef<QRConnectHandle>(null);
 
   // Initialize comics from localStorage (works as cache for both logged-in and anonymous)
   const [comics, setComics] = useState<Comic[]>(() => {
@@ -221,13 +225,50 @@ function HomePage() {
   }
 
   async function handleExport() {
-    if (!token) return;
     try {
-      const response = await fetch(`${API_URL}/api/collection/export`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const blob = await response.blob();
+      if (token) {
+        // Logged in - export from server
+        const response = await fetch(`${API_URL}/api/collection/export`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'comic-collection.csv';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }
+      } else {
+        // Not logged in - export from localStorage
+        const csvHeader = '# Comic Collection Export\n# Generated: ' + new Date().toISOString() + '\nUPC,Name,Series,Volume,Year,Issue,Printing,Variant,Starred,Cover Image';
+        const csvRows = comics.map(comic => {
+          const escape = (val: string | number | undefined) => {
+            if (val === undefined || val === null) return '';
+            const str = String(val);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+              return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+          };
+          return [
+            comic.upc,
+            escape(comic.name),
+            escape(comic.seriesName),
+            escape(comic.seriesVolume),
+            escape(comic.seriesYear),
+            comic.issueNumber,
+            comic.printing || '',
+            comic.variantNumber || '',
+            comic.starred ? 'Yes' : 'No',
+            comic.coverImage || ''
+          ].join(',');
+        });
+        const csv = csvHeader + '\n' + csvRows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -236,15 +277,17 @@ function HomePage() {
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+        showToast(`Exported ${comics.length} comic${comics.length !== 1 ? 's' : ''}`, 'success');
       }
     } catch (err) {
       console.error('Failed to export:', err);
+      showToast('Failed to export collection', 'error');
     }
   }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !token) return;
+    if (!file) return;
 
     try {
       const text = await file.text();
@@ -280,22 +323,47 @@ function HomePage() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/collection/import`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ comics: importedComics })
-      });
+      if (token) {
+        // Logged in - import to server
+        const response = await fetch(`${API_URL}/api/collection/import`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ comics: importedComics })
+        });
 
-      const result = await response.json();
-      if (response.ok) {
-        setError(null);
-        loadCollection();
-        alert(`Imported ${result.imported} comics (${result.skipped} duplicates skipped)`);
+        const result = await response.json();
+        if (response.ok) {
+          setError(null);
+          loadCollection();
+          showToast(`Imported ${result.imported} comics (${result.skipped} duplicates skipped)`, 'success');
+        } else {
+          setError(result.error || 'Import failed');
+        }
       } else {
-        setError(result.error || 'Import failed');
+        // Not logged in - import to localStorage
+        const existingUpcs = new Set(comics.map(c => c.upc));
+        let imported = 0;
+        let skipped = 0;
+        const newComics: Comic[] = [];
+
+        for (const comic of importedComics) {
+          if (existingUpcs.has(comic.upc)) {
+            skipped++;
+          } else {
+            existingUpcs.add(comic.upc);
+            newComics.push({ ...comic, sortOrder: comics.length + newComics.length });
+            imported++;
+          }
+        }
+
+        if (newComics.length > 0) {
+          setComics(prev => [...prev, ...newComics]);
+        }
+        setError(null);
+        showToast(`Imported ${imported} comics (${skipped} duplicates skipped)`, 'success');
       }
     } catch (err) {
       console.error('Failed to import:', err);
@@ -401,58 +469,64 @@ function HomePage() {
         <SearchBar onSearch={handleSearch} />
 
         <div className="scan-actions">
-          <FileUpload onComicFound={handleFileUpload} />
+          <FileUpload ref={fileUploadRef} onComicFound={handleFileUpload} />
           <span className="scan-divider">or</span>
-          <QRConnect onComicReceived={handleQRScan} />
+          <QRConnect ref={qrConnectRef} onComicReceived={handleQRScan} />
         </div>
 
-        {comics.length > 0 && (
-          <div className="controls-row">
-            <div className="controls-left">
-              <div className="sort-controls">
-                <label htmlFor="sort-select">Sort:</label>
-                <select
-                  id="sort-select"
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value as SortOption)}
-                  className="sort-select"
-                >
-                  <option value="custom">Custom Order</option>
-                  <option value="a-z">Series A-Z</option>
-                  <option value="z-a">Series Z-A</option>
-                </select>
-              </div>
-            </div>
-            <div className="action-buttons">
-              {user && (
-                <>
-                  <button onClick={handleExport} className="export-button" disabled={comics.length === 0}>
-                    Export
-                  </button>
-                  <label className="import-button">
-                    Import
-                    <input
-                      type="file"
-                      accept=".csv,.txt"
-                      onChange={handleImport}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                </>
-              )}
-              <button onClick={() => setShowClearConfirm(true)} className="clear-button">
-                Clear All ({comics.length})
-              </button>
+        <div className="controls-row">
+          <div className="controls-left">
+            <div className="sort-controls">
+              <label htmlFor="sort-select">Sort:</label>
+              <select
+                id="sort-select"
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className="sort-select"
+                disabled={comics.length === 0}
+              >
+                <option value="custom">Custom Order</option>
+                <option value="a-z">Series A-Z</option>
+                <option value="z-a">Series Z-A</option>
+              </select>
             </div>
           </div>
-        )}
+          <div className="action-buttons">
+            <button onClick={handleExport} className="export-button" disabled={comics.length === 0}>
+              Export
+            </button>
+            <label className="import-button">
+              Import
+              <input
+                type="file"
+                accept=".csv,.txt"
+                onChange={handleImport}
+                style={{ display: 'none' }}
+              />
+            </label>
+            <button onClick={() => setShowClearConfirm(true)} className="clear-button" disabled={comics.length === 0}>
+              Clear All ({comics.length})
+            </button>
+          </div>
+        </div>
       </div>
 
       {loading && <div className="loading">Searching...</div>}
       {error && <div className="error">{error}</div>}
 
       {comics.length === 0 ? (
-        <EmptyState />
+        <EmptyState
+          onSearchClick={() => {
+            const searchInput = document.getElementById('query');
+            searchInput?.focus();
+          }}
+          onUploadClick={() => {
+            fileUploadRef.current?.trigger();
+          }}
+          onScanClick={() => {
+            qrConnectRef.current?.connect();
+          }}
+        />
       ) : (
         <ComicGrid
           comics={sortedComics}

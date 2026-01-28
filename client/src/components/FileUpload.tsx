@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useToast } from '../context/ToastContext';
 import type { Comic } from '../types/comic';
 
@@ -8,7 +8,11 @@ interface FileUploadProps {
   onComicFound: (comic: Comic) => boolean; // Returns true if added, false if duplicate
 }
 
-export function FileUpload({ onComicFound }: FileUploadProps) {
+export interface FileUploadHandle {
+  trigger: () => void;
+}
+
+export const FileUpload = forwardRef<FileUploadHandle, FileUploadProps>(function FileUpload({ onComicFound }, ref) {
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
@@ -16,6 +20,12 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const cancelledRef = useRef(false);
   const { showToast } = useToast();
+
+  useImperativeHandle(ref, () => ({
+    trigger: () => {
+      inputRef.current?.click();
+    }
+  }));
 
   async function uploadFile(file: File): Promise<Comic | null> {
     if (cancelledRef.current) return null;
@@ -177,4 +187,4 @@ export function FileUpload({ onComicFound }: FileUploadProps) {
       )}
     </div>
   );
-}
+});

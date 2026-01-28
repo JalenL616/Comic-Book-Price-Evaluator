@@ -91,6 +91,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('token', data.token);
     setToken(data.token);
     setUser(data.user);
+
+    // Transfer any existing localStorage comics to the new account
+    const savedComics = localStorage.getItem('comics');
+    if (savedComics) {
+      try {
+        const comics = JSON.parse(savedComics);
+        if (Array.isArray(comics) && comics.length > 0) {
+          await fetch(`${API_URL}/api/collection/import`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${data.token}`
+            },
+            body: JSON.stringify({ comics })
+          });
+        }
+      } catch (err) {
+        console.error('Failed to transfer comics to new account:', err);
+      }
+    }
   }
 
   function logout() {

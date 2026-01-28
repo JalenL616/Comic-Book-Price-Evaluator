@@ -53,7 +53,6 @@
 }
 
 .search-form button:hover {
-  transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(212, 168, 83, 0.35);
 }
 

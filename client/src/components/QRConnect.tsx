@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { io, Socket } from 'socket.io-client';
 import type { Comic } from '../types/comic';
@@ -12,9 +12,13 @@ interface QRConnectProps {
   onComicReceived: (comic: Comic) => boolean; // Returns true if added, false if duplicate
 }
 
+export interface QRConnectHandle {
+  connect: () => void;
+}
+
 type ConnectionStatus = 'disconnected' | 'waiting' | 'connected';
 
-export function QRConnect({ onComicReceived }: QRConnectProps) {
+export const QRConnect = forwardRef<QRConnectHandle, QRConnectProps>(function QRConnect({ onComicReceived }, ref) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
@@ -26,7 +30,7 @@ export function QRConnect({ onComicReceived }: QRConnectProps) {
     onComicReceivedRef.current = onComicReceived;
   }, [onComicReceived]);
 
-  const connect = useCallback(() => {
+  const connectInternal = useCallback(() => {
     const newSessionId = crypto.randomUUID();
     setSessionId(newSessionId);
     setStatus('waiting');
@@ -85,6 +89,16 @@ export function QRConnect({ onComicReceived }: QRConnectProps) {
     setIsModalOpen(true);
   }, []);
 
+  useImperativeHandle(ref, () => ({
+    connect: () => {
+      if (status === 'disconnected') {
+        connectInternal();
+      } else {
+        openModal();
+      }
+    }
+  }), [status, connectInternal, openModal]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -103,7 +117,7 @@ export function QRConnect({ onComicReceived }: QRConnectProps) {
   return (
     <>
       {!isConnected ? (
-        <button onClick={connect} className="qr-connect-button">
+        <button onClick={connectInternal} className="qr-connect-button">
           Scan with Phone
         </button>
       ) : (
@@ -160,4 +174,4 @@ export function QRConnect({ onComicReceived }: QRConnectProps) {
       )}
     </>
   );
-}
+});
